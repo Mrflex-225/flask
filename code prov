@@ -1,0 +1,139 @@
+import jwt
+import datetime
+from flask import Flask, jsonify, request
+from flask_sqlalchemy import SQLAlchemy
+import bcrypt
+import os
+import os
+from dotenv import load_dotenv
+
+
+load_dotenv()  # Charge les variables d'environnement depuis .env
+
+app = Flask(__name__)
+
+# Configuration de la base de donnees PostgreSQL
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://admin:admin@localhost/flask_api'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+from dotenv import load_dotenv
+
+app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'default_cle_secrete')
+
+db = SQLAlchemy(app)
+# Créer la base de données et les tables si nécessaire
+with app.app_context():
+    # Tester la connexion à la base de données
+    result = db.session.execute('SELECT 1')
+    print(result)
+
+# Modèle d'utilisateur pour la base de donnees
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(120), nullable=False)
+    first_name = db.Column(db.String(50), nullable=False)
+    last_name = db.Column(db.String(50), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+
+    def __repr__(self):
+        return f'<User {self.username}>'
+
+# Creer les tables dans la base de donnees
+@app.before_request
+def create_tables():
+    db.create_all()
+
+
+# @app.route('/api/register', methods=['POST'])
+# def register():
+#     data = request.get_json()
+#     if not data:
+#         return jsonify({'message': 'Aucune donnée JSON reçue'}), 400
+#     print(data)  # Cela affichera les données dans le terminal de Flask
+
+#     username = data.get('username')
+#     password = data.get('password')
+#     first_name = data.get('first_name')
+#     last_name = data.get('last_name')
+#     email = data.get('email')
+
+#     # Verifie si l'utilisateur existe deja
+#     existing_user = User.query.filter_by(username=username).first()
+#     if existing_user:
+#         return jsonify({'message': 'Nom d\'utilisateur deja pris!'}), 400
+
+#     existing_email = User.query.filter_by(email=email).first()
+#     if existing_email:
+#         return jsonify({'message': 'Email deja utilise!'}), 400
+
+#     # Hashage du mot de passe
+#     hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+
+#     # Creer un nouvel utilisateur dans la base de donnees
+#     new_user = User(
+#         username=username, 
+#         password_hash=hashed_password,
+#         first_name=first_name,
+#         last_name=last_name,
+#         email=email
+#     )
+#     db.session.add(new_user)
+#     db.session.commit()
+
+#     return jsonify({'message': 'Inscription reussie!'}), 201
+
+@app.route('/api/test_db_connection', methods=['GET'])
+def test_db_connection():
+    try:
+        # Essayer une requête simple
+        result = db.session.execute('SELECT 1')
+        return jsonify({'message': 'Connexion à la base de données réussie!'})
+    except Exception as e:
+        return jsonify({'message': f'Erreur de connexion à la base de données : {str(e)}'}), 500
+
+
+
+# # Route de connexion
+# @app.route('/api/login', methods=['POST'])
+# def login():
+#     data = request.get_json()
+#     username = data.get('username')
+#     password = data.get('password')
+
+#     user = User.query.filter_by(username=username).first()
+#     if not user:
+#         return jsonify({'message': 'Nom d\'utilisateur non trouve!'}), 404
+
+#     # Verification du mot de passe
+#     if bcrypt.checkpw(password.encode('utf-8'), user.password_hash):
+#         # Generation du token JWT
+#         token = jwt.encode({
+#             'username': username, 
+#             'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)  # Expiration du token dans 1h
+#         }, app.config['SECRET_KEY'], algorithm="HS256")
+        
+#         # Retourne le token dans la reponse
+#         return jsonify({'token': token}), 200
+#     else:
+#         return jsonify({'message': 'Mot de passe incorrect!'}), 401
+
+# # Exemple de route protegee (requiert un token)
+# @app.route('/api/protected', methods=['GET'])
+# def protected_route():
+#     token = request.headers.get('Authorization')
+#     if not token:
+#         return jsonify({'message': 'Token manquant!'}), 403
+
+#     try:
+#         token = token.split(" ")[1]  # Recupère le token après "Bearer "
+#         # Decodage du token et verification
+#         data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+#         current_user = data['username']
+#         return jsonify({'message': f'Bienvenue {current_user}, vous avez accès a cette route protegee!'}), 200
+#     except jwt.ExpiredSignatureError:
+#         return jsonify({'message': 'Le token a expire!'}), 401
+#     except jwt.InvalidTokenError:
+#         return jsonify({'message': 'Token invalide!'}), 403
+
+if __name__ == '__main__':
+    app.run(debug=True)
